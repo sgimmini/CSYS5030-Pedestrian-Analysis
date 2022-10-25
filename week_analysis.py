@@ -29,7 +29,7 @@ def plot_acf_for_file(file_path, lags=100):
 
 
 # function to calculate the mutual information 
-def mutal_information_calculation(file_root, outfile_name, verbose=False, stat_signif=False, time_lag_max=10):
+def mutal_information_calculation(file_root, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0):
 
     # array with all files in file_root with os.path
     if ".csv" in file_root:
@@ -45,21 +45,36 @@ def mutal_information_calculation(file_root, outfile_name, verbose=False, stat_s
 
     for file in tqdm(files, position=0, desc="Processing files"):
 
-        file_path = osp.join(file_root, file)
+        #file_path = osp.join(file_root, file)
         # print("----------------------------------")
         tqdm.write("Processing file: \"" + file + "\"")
 
-        # get day, month and year from file name in pattern dd-mm-yyyy with regex
-        day, month, year = re.findall(r'\d+', file)
+        try:    
+            # get day, month and year from file name in pattern dd-mm-yyyy with regex
+            day, month, year = re.findall(r'\d+', file.split("/")[-1])
+        # except value error 
+        except ValueError:
+            try:
+                # get month and year from file name in pattern mm-yyyy with regex
+                month, year = re.findall(r'\d+', file.split("/")[-1])
+                day = np.nan
+            except ValueError:
+                # get year from file name in pattern yyyy with regex
+                year = re.findall(r'\d+', file.split("/")[-1])[0]
+                month = np.nan
+                day = np.nan
+
+        if verbose:
+            print("Year: " + str(year) + ", Month: " + str(month) + ", Day: " + str(day))
 
         # read first line of file to get column names
-        with open(file_path, 'r') as f:
+        with open(file, 'r') as f:
             column_names = f.readline().split(',')
             # remove any non digit characters from column names
             column_names = [re.sub(r'\D', '', column_name) for column_name in column_names]
 
         # 0. Load/prepare the data:
-        dataRaw = readFloatsFile.readFloatsFile(file_path)
+        dataRaw = readFloatsFile.readFloatsFile(file)
 
         # print column names if verbose
         if verbose:
@@ -74,8 +89,8 @@ def mutal_information_calculation(file_root, outfile_name, verbose=False, stat_s
         for time_lag in tqdm(range(0, time_lag_max), position=1, leave=False, desc="Time lag"):
             # 2. Set any properties to non-default values:
             calc.setProperty("TIME_DIFF", str(time_lag))
-            #calc.setProperty("DYN_CORR_EXCL", "24")
-            
+            calc.setProperty("DYN_CORR_EXCL", str(dyn_corr_excl))
+
             # Compute for all pairs:
             for s in tqdm(range(data.shape[1]), position=2, leave=False, desc="Sensor 1"):
                 for d in tqdm(range(data.shape[1]), position=3, leave=False, desc="Sensor 2"):
