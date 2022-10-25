@@ -146,7 +146,7 @@ def mutal_information_calculation(file_root, outfile_name, verbose=False, stat_s
 
 
 # function to calculate the active information storage
-def active_information_storage_calculation(file_root, outfile_name, verbose=False, stat_signif=False):
+def active_information_storage_calculation(file_root, outfile_name, verbose=False, stat_signif=False, dyn_corr_excl=0):
     # array with all files in file_root with os.path
     if ".csv" in file_root:
         files = [file_root]
@@ -190,13 +190,18 @@ def active_information_storage_calculation(file_root, outfile_name, verbose=Fals
         calc = calcClass()
     
         # 2. Set any properties to non-default values:
-        #calc.setProperty("DYN_CORR_EXCL", "24")
-        calc.setProperty("k_History", "1")
-        
-        # Compute for all pairs:
+        calc.setProperty("k_History", "2")
+        calc.setProperty("TAU", "5")
+                
+        # Compute for all columns:
         for v in tqdm(range(data.shape[1]), position=2, leave=False, desc="Sensor 1"):
             variable = JArray(JDouble, 1)(data[:, v].tolist())
     
+            calc.setProperty("DYN_CORR_EXCL", str(dyn_corr_excl)) 
+            calc.setProperty("AUTO_EMBED_METHOD", "MAX_CORR_AIS")
+            calc.setProperty("AUTO_EMBED_K_SEARCH_MAX", "10")
+            calc.setProperty("AUTO_EMBED_TAU_SEARCH_MAX", "10")
+
             # 3. Initialise the calculator for (re-)use:
             calc.initialise()
             # 4. Supply the sample data:
