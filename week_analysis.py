@@ -14,6 +14,18 @@ import matplotlib.pyplot as plt
 from statsmodels.graphics.tsaplots import plot_acf
 
 
+# plot autocorrelation function for one column of a file that is read in as a pandas df
+def plot_acf_for_file(file_path, lags=100):
+    # print all column names
+    df = pd.read_csv(file_path, sep=";")
+    print(df.columns)
+
+    # let the user choose the column to plot
+    column = input("Please enter the column name to plot the acf for: ")
+
+    df = pd.read_csv(file_path)
+    plot_acf(df[column], lags=lags)
+    plt.show() 
 
 
 # function to calculate the mutual information 
