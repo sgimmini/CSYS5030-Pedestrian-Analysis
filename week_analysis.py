@@ -240,6 +240,99 @@ def active_information_storage_calculation(file_root, outfile_name, verbose=Fals
             df.to_csv(outfile_name, index=False)
 
 
+# function to calculate the transfer entropy for all sensor pairs
+def transfer_entropy_calculation(file_root, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0):
+
+    # array with all files in file_root with os.path
+    if ".csv" in file_root:
+        files = [file_root]
+    else:
+        files = [f for f in os.listdir(file_root) if osp.isfile(osp.join(file_root, f))]
+
+    # pandas df with columns Year, Month, Day, Sensor1, Sensor2, Time_lag, TE and Stat_sig
+    df = pd.DataFrame(columns=["Year", "Month", "Day", "Sensor1", "Sensor2", "Time_lag", "TE", "Stat_sig"])
+
+    for file in tqdm(files, position=0, desc="Processing files"):
+
+        tqdm.write("Processing file: \"" + file + "\"")
+
+        year, month, day = get_year_month_day(file)
+
+        # read first line of file to get column names
+        with open(file, 'r') as f:
+            column_names = f.readline().split(',')
+            # remove any non digit characters from column names
+            column_names = [re.sub(r'\D', '', column_name) for column_name in column_names]
+
+        # 0. Load/prepare the data:
+        dataRaw = readFloatsFile.readFloatsFile(file)
+
+        # print column names if verbose
+        if verbose:
+            print("Column names: " + str(column_names))
+
+        # As numpy array:
+        data = np.array(dataRaw)
+        
+        # 1. Construct the calculator:
+        calcClass = JPackage("infodynamics.measures.continuous.kraskov").TransferEntropyCalculatorKraskov
+        calc = calcClass()
+        # 2. Set any properties to non-default values:
+        calc.setProperty("k_HISTORY", "2")
+        calc.setProperty("k_TAU", "3")
+        calc.setProperty("l_HISTORY", "2")
+        calc.setProperty("l_TAU", "6")
+        calc.setProperty("DYN_CORR_EXCL", str(dyn_corr_excl))
+        calc.setProperty("AUTO_EMBED_METHOD", "MAX_CORR_AIS")
+        calc.setProperty("AUTO_EMBED_K_SEARCH_MAX", "10")
+        calc.setProperty("AUTO_EMBED_TAU_SEARCH_MAX", "10")
+
+        for time_lag in tqdm(range(1, time_lag_max+1), position=1, leave=False, desc="Processing time lags"):
+            calc.setProperty("DELAY", str(time_lag))
+            # Compute for all pairs:
+            for s in tqdm(range(data.shape[1]), position=2, leave=False, desc="Processing sensor 1"):
+                for d in tqdm(range(data.shape[1]), position=3, leave=False, desc="Processing sensor 2"):
+                    # For each source-dest pair:
+                    if (s == d):
+                        continue
+                    source = JArray(JDouble, 1)(data[:, s].tolist())
+                    destination = JArray(JDouble, 1)(data[:, d].tolist())
+
+                    # 3. Initialise the calculator for (re-)use:
+                    calc.initialise()
+                    # 4. Supply the sample data:
+                    calc.setObservations(source, destination)
+                    # 5. Compute the estimate:
+                    result = calc.computeAverageLocalOfObservations()
+
+                    if stat_signif:
+                        # 6. Compute the (statistical significance via) null distribution empirically (e.g. with 100 permutations):
+                        measDist = calc.computeSignificance(100)
+                        nulldist = measDist.getMeanOfDistribution()
+                        std = measDist.getStdOfDistribution()
+                        p_value = measDist.pValue
+                    else:
+                        p_value = np.nan
+
+                    # save results in df with pd.concat
+                    df = pd.concat([df, pd.DataFrame([[year, month, day, column_names[s], column_names[d], time_lag, result, p_value]], columns=["Year", "Month", "Day", "Sensor1", "Sensor2", "Time_lag", "TE", "Stat_sig"])], ignore_index=True)
+
+                    # print result for each sensor pair with 4 decimal places, null distribution, std, p-value and time lag using f-string
+                    if verbose:
+                        if stat_signif:
+                            print(f"TE_Kraskov for sensor {column_names[s]} to sensor {column_names[d]} = {result:.4f} nats, null distribution: {nulldist}, std: {std}, p-value: {p_value}, time lag: {time_lag}")
+                        else:
+                            print(f"TE_Kraskov for sensor {column_names[s]} to sensor {column_names[d]} = {result:.4f} nats, time lag: {time_lag}")
+
+            # save df to csv every time lag
+            if stat_signif:
+                outfile_name = outfile_name.split(".")[0] + "_stat_sig.csv"
+                df.to_csv(outfile_name, index=False)
+            else:
+                df.to_csv(outfile_name, index=False)
+
+  
+
 # main function
 def main():
 
