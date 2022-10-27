@@ -157,7 +157,8 @@ def mutal_information_calculation(file_root, outfile_name, verbose=False, stat_s
 
 
 # function to calculate the active information storage
-def active_information_storage_calculation(file_root, outfile_name, verbose=False, stat_signif=False, dyn_corr_excl=0):
+def active_information_storage_calculation(file_path, outfile_name, verbose=False, stat_signif=False, dyn_corr_excl=0, split_observations=False, split_length=None):
+
     # array with all files in file_root with os.path
     if ".csv" in file_path:
         files = [file_path]
@@ -175,9 +176,7 @@ def active_information_storage_calculation(file_root, outfile_name, verbose=Fals
     
         tqdm.write("Processing file: \"" + file + "\"")
     
-        
         year, month, day = get_year_month_day(file)
-
 
         if verbose:
             print("Year: " + str(year) + ", Month: " + str(month) + ", Day: " + str(day))
@@ -207,20 +206,48 @@ def active_information_storage_calculation(file_root, outfile_name, verbose=Fals
                 
         # Compute for all columns:
         for v in tqdm(range(data.shape[1]), position=2, leave=False, desc="Sensor 1"):
-            variable = JArray(JDouble, 1)(data[:, v].tolist())
-    
-            calc.setProperty("DYN_CORR_EXCL", str(dyn_corr_excl)) 
-            calc.setProperty("AUTO_EMBED_METHOD", "MAX_CORR_AIS")
-            calc.setProperty("AUTO_EMBED_K_SEARCH_MAX", "10")
-            calc.setProperty("AUTO_EMBED_TAU_SEARCH_MAX", "10")
+
+            # set properties
+            # FIXME: Addition of multiple observation sets is not currently supported with property DYN_CORR_EXCL set
+            if not split_observations:
+                calc.setProperty("DYN_CORR_EXCL", str(dyn_corr_excl)) 
+                calc.setProperty("AUTO_EMBED_METHOD", "MAX_CORR_AIS")
+                calc.setProperty("AUTO_EMBED_K_SEARCH_MAX", "10")
+                calc.setProperty("AUTO_EMBED_TAU_SEARCH_MAX", "10")
 
             # 3. Initialise the calculator for (re-)use:
             calc.initialise()
-            # 4. Supply the sample data:
-            calc.setObservations(variable)
-            # 5. Compute the estimate:
-            result = calc.computeAverageLocalOfObservations()
+
+            if split_observations:
+                calc.startAddObservations()
+
+                if split_length == 31:
+                    # if month is 1, 3, 5, 7, 8, 10, 12
+                    if month in [1, 3, 5, 7, 8, 10, 12]:
+                        split_length = 31
+                    # if month is 4, 6, 9, 11
+                    elif month in [4, 6, 9, 11]:
+                        split_length = 30
+                    # if month is 2
+                    elif month == 2:
+                        # I removed 29th in all datasets
+                        split_length = 28
+
+                # split every column to oberservations of length 24 for every day
+                for i in range(0, data.shape[0], split_length):
+                    observations = JArray(JDouble, 1)(data[i:i+split_length, v].tolist())
+                    calc.addObservations(observations)
+
+                # 4. Finalise adding observations:
+                calc.finaliseAddObservations()
+
+            else: 
+                variable = JArray(JDouble, 1)(data[:, v].tolist())
     
+                # 4. Supply the sample data:
+                calc.setObservations(variable)
+
+            result = calc.computeAverageLocalOfObservations()
             if stat_signif:
                 # 6. Compute the (statistical significance via) null distribution empirically (e.g. with 100 permutations):
                 measDist = calc.computeSignificance(100)
@@ -229,18 +256,18 @@ def active_information_storage_calculation(file_root, outfile_name, verbose=Fals
                 p_value = measDist.pValue
             else: 
                 p_value = np.nan
-    
+
             # save results in df with pd.concat
             df = pd.concat([df, pd.DataFrame([[year, month, day, column_names[v], result, p_value]], columns=["Year", "Month", "Day", "Sensor", "AIS", "Stat_Sig"])], ignore_index=True)
-    
+
             # print result for each sensor pair with 4 decimal places, nulldist, std, p_value and time lag using f-string
             if verbose:
                 if stat_signif:
                     tqdm.write(f"AIS({column_names[v]}) = {result:.4f} nulldist = {nulldist:.4f} std = {std:.4f} p_value = {p_value:.4f}")
                 else:
-                    tqdm.write(f"AIS({column_names[v]}) = {result:.4f}")
+                    print(f"AIS_Kraskov for sensor {column_names[v]} = {result:.4f} nats")
 
-
+    
         # save df to csv every file iteration
         if stat_signif:
             if outfile_name.endswith("_stat_sig.csv"):
