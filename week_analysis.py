@@ -58,7 +58,7 @@ def get_year_month_day(file):
 
 
 # function to calculate the mutual information 
-def mutal_information_calculation(file_root, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0):
+def mutal_information_calculation(file_path, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0):
 
     # array with all files in file_root with os.path
     if ".csv" in file_path:
