@@ -56,6 +56,19 @@ def get_year_month_day(file):
     return year, month, day
 
 
+def set_split_length(month):
+    # if month is 1, 3, 5, 7, 8, 10, 12
+    if month in [1, 3, 5, 7, 8, 10, 12]:
+        split_length = 31
+    # if month is 4, 6, 9, 11
+    elif month in [4, 6, 9, 11]:
+        split_length = 30
+    # if month is 2
+    elif month == 2:
+        # I removed 29th in all datasets
+        split_length = 28
+
+    return split_length
 
 # function to calculate the mutual information 
 def mutal_information_calculation(file_path, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0):
@@ -222,16 +235,7 @@ def active_information_storage_calculation(file_path, outfile_name, verbose=Fals
                 calc.startAddObservations()
 
                 if split_length == 31:
-                    # if month is 1, 3, 5, 7, 8, 10, 12
-                    if month in [1, 3, 5, 7, 8, 10, 12]:
-                        split_length = 31
-                    # if month is 4, 6, 9, 11
-                    elif month in [4, 6, 9, 11]:
-                        split_length = 30
-                    # if month is 2
-                    elif month == 2:
-                        # I removed 29th in all datasets
-                        split_length = 28
+                    split_length = set_split_length(month=month)                    
 
                 # split every column to oberservations of length 24 for every day
                 for i in range(0, data.shape[0], split_length):
