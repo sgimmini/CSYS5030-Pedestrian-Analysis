@@ -103,7 +103,7 @@ def mutal_information_calculation(file_root, outfile_name, verbose=False, stat_s
         calcClass = JPackage("infodynamics.measures.continuous.kraskov").MutualInfoCalculatorMultiVariateKraskov1
         calc = calcClass()
 
-        for time_lag in tqdm(range(0, time_lag_max), position=1, leave=False, desc="Time lag"):
+        for time_lag in tqdm(range(0, time_lag_max+1), position=1, leave=False, desc="Time lag"):
             # 2. Set any properties to non-default values:
             calc.setProperty("TIME_DIFF", str(time_lag))
             calc.setProperty("DYN_CORR_EXCL", str(dyn_corr_excl))
