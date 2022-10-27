@@ -61,10 +61,11 @@ def get_year_month_day(file):
 def mutal_information_calculation(file_root, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0):
 
     # array with all files in file_root with os.path
-    if ".csv" in file_root:
-        files = [file_root]
+    if ".csv" in file_path:
+        files = [file_path]
     else:
-        files = [f for f in os.listdir(file_root) if osp.isfile(osp.join(file_root, f))]
+        files = [osp.join(file_path, f) for f in os.listdir(file_path) if osp.isfile(osp.join(file_path, f))]
+
 
     # debug:
     #files = [os.listdir(file_root)[:2]]
@@ -158,11 +159,12 @@ def mutal_information_calculation(file_root, outfile_name, verbose=False, stat_s
 # function to calculate the active information storage
 def active_information_storage_calculation(file_root, outfile_name, verbose=False, stat_signif=False, dyn_corr_excl=0):
     # array with all files in file_root with os.path
-    if ".csv" in file_root:
-        files = [file_root]
+    if ".csv" in file_path:
+        files = [file_path]
     else:
-        files = [f for f in os.listdir(file_root) if osp.isfile(osp.join(file_root, f))]
-    
+        files = [osp.join(file_path, f) for f in os.listdir(file_path) if osp.isfile(osp.join(file_path, f))]
+
+   
     # debug:
     #files = [os.listdir(file_root)[:2]]
     
@@ -254,10 +256,11 @@ def active_information_storage_calculation(file_root, outfile_name, verbose=Fals
 def transfer_entropy_calculation(file_root, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0):
 
     # array with all files in file_root with os.path
-    if ".csv" in file_root:
-        files = [file_root]
+    if ".csv" in file_path:
+        files = [file_path]
     else:
-        files = [f for f in os.listdir(file_root) if osp.isfile(osp.join(file_root, f))]
+        files = [osp.join(file_path, f) for f in os.listdir(file_path) if osp.isfile(osp.join(file_path, f))]
+
 
     # pandas df with columns Year, Month, Day, Sensor1, Sensor2, Time_lag, TE and Stat_sig
     df = pd.DataFrame(columns=["Year", "Month", "Day", "Sensor1", "Sensor2", "Time_lag", "TE", "Stat_sig"])
