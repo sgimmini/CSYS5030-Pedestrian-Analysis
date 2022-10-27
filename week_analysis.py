@@ -284,7 +284,7 @@ def active_information_storage_calculation(file_path, outfile_name, verbose=Fals
 
 
 # function to calculate the transfer entropy for all sensor pairs
-def transfer_entropy_calculation(file_root, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0):
+def transfer_entropy_calculation(file_path, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0, split_observations=False, split_length=None):
 
     # array with all files in file_root with os.path
     if ".csv" in file_path:
@@ -339,13 +339,31 @@ def transfer_entropy_calculation(file_root, outfile_name, verbose=False, stat_si
                     # For each source-dest pair:
                     if (s == d):
                         continue
-                    source = JArray(JDouble, 1)(data[:, s].tolist())
-                    destination = JArray(JDouble, 1)(data[:, d].tolist())
 
                     # 3. Initialise the calculator for (re-)use:
                     calc.initialise()
-                    # 4. Supply the sample data:
-                    calc.setObservations(source, destination)
+
+                    if split_observations:
+                        calc.startAddObservations()
+
+                        if split_length == 31:
+                            split_length = set_split_length(month=month)                    
+
+                        # split every column to oberservations 
+                        for i in range(0, data.shape[0], split_length):
+                            source = JArray(JDouble, 1)(data[i:i+split_length, s].tolist())
+                            destination = JArray(JDouble, 1)(data[i:i+split_length, d].tolist())
+                            calc.addObservations(source, destination)
+
+                        # 4. Finalise adding observations:
+                        calc.finaliseAddObservations()
+                    
+                    else:
+                        source = JArray(JDouble, 1)(data[:, s].tolist())
+                        destination = JArray(JDouble, 1)(data[:, d].tolist())
+                        # 4. Supply the sample data:
+                        calc.setObservations(source, destination)
+
                     # 5. Compute the estimate:
                     result = calc.computeAverageLocalOfObservations()
 
