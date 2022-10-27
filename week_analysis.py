@@ -41,7 +41,17 @@ def get_year_month_day(file):
             # get year from file name in pattern yyyy with regex
             year = re.findall(r'\d+', file.split("/")[-1])[0]
             month = np.nan
-            day = np.nan
+            # dict of weekday names to numbers 
+            # this is for having a structure for a better analysis
+            weekdays = {"monday": 1, "tuesday": 2, "wednesday": 3, "thursday": 4, "friday": 5, "saturday": 6, "sunday": 7}
+
+            # check if file name contains a weekday
+            for weekday in weekdays:
+                if weekday in file:
+                    day = weekdays[weekday]
+                    break
+                else:
+                    day = np.nan
 
     return year, month, day
 
