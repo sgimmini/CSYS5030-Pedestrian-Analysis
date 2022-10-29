@@ -467,17 +467,52 @@ def main():
     # Add JIDT jar library to the path
     jarLocation = "/Users/simongimmini/forks/jidt/infodynamics.jar"
 
-    # file root 
-    file = "/Users/simongimmini/Documents/Studium/CSYS5030 Information Theory/assignments/3/pedestrians/data/one_week"
-
     # Start the JVM (add the "-Xmx" option with say 1024M if you get crashes due to not enough memory space)
     startJVM(getDefaultJVMPath(), "-ea", "-Djava.class.path=" + jarLocation)
 
-    active_information_storage_calculation(file, outfile_name="week_daily_hourly_AIS.csv", verbose=False, stat_signif=True)
+    # DAY / WEEK
+    # day_file = "data/one_week/datetime_sensor_id_week-11-2018.csv" 
+    day_file = "data/one_week/days/datetime_sensor_id_12-11-2018.csv" 
+    # plot_acf_for_file(day_file, 23)
+    # active_information_storage_calculation(day_file, outfile_name="week_hourly_AIS.csv", verbose=False, stat_signif=True, dyn_corr_excl=25)
+    # mutal_information_calculation(day_file, outfile_name="week_hourly_MI_TL24.csv", verbose=False, stat_signif=False, time_lag_max=24, dyn_corr_excl=25)
+    # FIXME transfer_entropy_calculation(day_file, outfile_name="day_hourly_TE_TL5.csv", verbose=False, stat_signif=False, time_lag_max=5, dyn_corr_excl=0)
 
-    #mutal_information_calculation(file, outfile_name="week_daily_hourly_MI_TL10.csv", verbose=False, stat_signif=False, time_lag_max=10)
+    # MONTH
+    month_file = "data/one_month/datetime_sensor_id_eight_fifteen_2-2018.csv"
+    # plot_acf_for_file(month_file, 100)
+    # active_information_storage_calculation(month_file, outfile_name="month_hourly_AIS.csv", verbose=False, stat_signif=True, dyn_corr_excl=29)
+    # mutal_information_calculation(month_file, outfile_name="month_hourly_MI_TL24.csv", verbose=False, stat_signif=False, time_lag_max=24, dyn_corr_excl=29)
+    # transfer_entropy_calculation(month_file, outfile_name="feb18_sensor-8-15_hourly_TE_TL5.csv", verbose=False, stat_signif=True, time_lag_max=5, dyn_corr_excl=29)
 
-    # transfer_entropy_calculation(file_root, outfile_name=f"{interval}_TE_TL5_dyncorr55.csv", verbose=False, stat_signif=False)
+
+    # YEAR
+    year_file = "data/refactored_years_hourly/datetime_sensor_id_refactor_2018.csv"
+    # plot_acf_for_file(year_file, 100) # -> 24 for month and year
+    # active_information_storage_calculation(year_file, outfile_name="year_hourly_AIS.csv", verbose=False, stat_signif=True, dyn_corr_excl=29)
+    # mutal_information_calculation(year_file, outfile_name="year_hourly_MI_TL5.csv", verbose=False, stat_signif=False, time_lag_max=5, dyn_corr_excl=29)
+    # transfer_entropy_calculation(year_file, outfile_name="year18_hourly_TE_TL5.csv", verbose=False, stat_signif=False, time_lag_max=5, dyn_corr_excl=29)
+
+    # WEEKDAYS
+    weekday_file = "data/weekdays"#/datetime_sensor_id_monday-2018.csv"
+    # plot_acf_for_file(weekday_file, 100) # -> 29
+    # active_information_storage_calculation(weekday_file, outfile_name="weekday_hourly_AIS.csv", verbose=False, stat_signif=True, dyn_corr_excl=29, split_observations=True, split_length=24)
+    # mutal_information_calculation(weekday_file, outfile_name="weekday_hourly_MI_TL5.csv", verbose=False, stat_signif=True, time_lag_max=5, dyn_corr_excl=29, split_observations=True, split_length=24)
+    # TODO: transfer_entropy_calculation(weekday_file, outfile_name="weekday_hourly_TE_TL5.csv", verbose=False, stat_signif=True, time_lag_max=5, dyn_corr_excl=29, split_observations=True, split_length=24)
+
+    # MONTHS - this is different from MONTH, as here I have ensured to have the same sensors for all months
+    months_file = "data/one_year/"
+    # plot_acf_for_file(osp.join(months_file, os.listdir(months_file)[0]), 100) # -> 29
+    # active_information_storage_calculation(months_file, outfile_name="months_hourly_AIS.csv", verbose=False, stat_signif=True, dyn_corr_excl=29)
+    # mutal_information_calculation(months_file, outfile_name="months_hourly_MI_TL5.csv", verbose=False, stat_signif=False, time_lag_max=5, dyn_corr_excl=29)
+    # transfer_entropy_calculation(months_file, outfile_name="months_hourly_TE_TL5.csv", verbose=False, stat_signif=False, time_lag_max=5, dyn_corr_excl=29)
+
+    # YEARS - years 2019 - 2021
+    years_file = "data/three_years/"
+    # plot_acf_for_file(osp.join(years_file, os.listdir(years_file)[0]), 100) # -> 29
+    # active_information_storage_calculation(years_file, outfile_name="years1921_hourly_AIS.csv", verbose=False, stat_signif=True, dyn_corr_excl=29, split_observations=True, split_length=31)
+    # mutal_information_calculation(years_file, outfile_name="years1921_hourly_MI_TL5.csv", verbose=False, stat_signif=False, time_lag_max=5, dyn_corr_excl=29)
+    # TODO:transfer_entropy_calculation(years_file, outfile_name="years1921_hourly_TE_TL5.csv", verbose=False, stat_signif=False, time_lag_max=5, dyn_corr_excl=29, split_observations=True, split_length=31)
 
 # main
 if __name__ == "__main__":
