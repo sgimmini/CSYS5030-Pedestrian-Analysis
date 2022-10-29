@@ -325,6 +325,10 @@ def transfer_entropy_calculation(file_path, outfile_name, verbose=False, stat_si
     # pandas df with columns Year, Month, Day, Sensor1, Sensor2, Time_lag, TE and Stat_sig
     df = pd.DataFrame(columns=["Year", "Month", "Day", "Sensor1", "Sensor2", "Time_lag", "TE", "Stat_sig"])
 
+    if compute_locals:
+        # pandas df to save local values of transfer entropy with same columns as df and additional column Local_TE
+        df_local = pd.DataFrame(columns=["Year", "Month", "Day", "Sensor1", "Sensor2", "Time_lag", "TE", "Stat_sig", "Local_TE"])
+
     for file in tqdm(files, position=0, desc="Processing files"):
 
         tqdm.write("Processing file: \"" + file + "\"")
@@ -396,7 +400,24 @@ def transfer_entropy_calculation(file_path, outfile_name, verbose=False, stat_si
                         calc.setObservations(source, destination)
 
                     # 5. Compute the estimate:
+                    if compute_locals:
+                        locals = np.array(calc.computeLocalOfPreviousObservations())
+                        # convert locals to a string with 4 decimal places and each value seperated by a comma
+                        locals = ",".join([f"{local:.4f}" for local in locals])
                     result = calc.computeAverageLocalOfObservations()
+
+                    # plot source and destination as time series and locals as x 
+                    # normalize source and destination
+                    # source = (source - np.mean(source)) / np.std(source)
+                    # destination = (destination - np.mean(destination)) / np.std(destination)
+                    # plt.plot(source)
+                    # plt.plot(destination)
+                    # # plot locals as x markers
+                    # plt.plot(locals, 'x')
+                    # plt.show()
+                    # print(locals)
+                    # print(type(locals))
+                    # exit()
 
                     if stat_signif:
                         # 6. Compute the (statistical significance via) null distribution empirically (e.g. with 100 permutations):
@@ -409,6 +430,8 @@ def transfer_entropy_calculation(file_path, outfile_name, verbose=False, stat_si
 
                     # save results in df with pd.concat
                     df = pd.concat([df, pd.DataFrame([[year, month, day, column_names[s], column_names[d], time_lag, result, p_value]], columns=["Year", "Month", "Day", "Sensor1", "Sensor2", "Time_lag", "TE", "Stat_sig"])], ignore_index=True)
+                    if compute_locals:
+                        df_local = pd.concat([df_local, pd.DataFrame([[year, month, day, column_names[s], column_names[d], time_lag, result, p_value, locals]], columns=["Year", "Month", "Day", "Sensor1", "Sensor2", "Time_lag", "TE", "Stat_sig", "Local_TE"])], ignore_index=True)
 
                     # print result for each sensor pair with 4 decimal places, null distribution, std, p-value and time lag using f-string
                     if verbose:
@@ -417,12 +440,24 @@ def transfer_entropy_calculation(file_path, outfile_name, verbose=False, stat_si
                         else:
                             print(f"TE_Kraskov for sensor {column_names[s]} to sensor {column_names[d]} = {result:.4f} nats, time lag: {time_lag}")
 
-            # save df to csv every time lag
             if stat_signif:
-                outfile_name = outfile_name.split(".")[0] + "_stat_sig.csv"
-                df.to_csv(outfile_name, index=False)
+                if outfile_name.endswith("_stat_sig.csv"):
+                    df.to_csv(outfile_name, index=False)
+                    if compute_locals:
+                        df_local.to_csv(outfile_name_locals, index=False)
+                else:
+                    if compute_locals:
+                        outfile_name_locals = outfile_name.split(".")[0] + "_locals_stat_sig.csv"
+                        df_local.to_csv(outfile_name_locals, index=False)
+                    outfile_name = outfile_name.split(".")[0] + "_stat_sig.csv"
+                    df.to_csv(outfile_name, index=False)
+
             else:
+                if compute_locals:
+                    outfile_name_locals = outfile_name.split(".")[0] + "_locals.csv"
+                    df_local.to_csv(outfile_name_locals, index=False)
                 df.to_csv(outfile_name, index=False)
+
 
   
 
