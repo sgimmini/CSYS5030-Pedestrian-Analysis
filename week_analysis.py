@@ -73,6 +73,7 @@ def set_split_length(month):
 # function to calculate the mutual information 
 def mutal_information_calculation(file_path, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0):
 
+    tqdm.write("Calculating mutual information")
     # array with all files in file_root with os.path
     if ".csv" in file_path:
         files = [file_path]
@@ -172,6 +173,7 @@ def mutal_information_calculation(file_path, outfile_name, verbose=False, stat_s
 # function to calculate the active information storage
 def active_information_storage_calculation(file_path, outfile_name, verbose=False, stat_signif=False, dyn_corr_excl=0, split_observations=False, split_length=None):
 
+    tqdm.write("Calculating active information storage")
     # array with all files in file_root with os.path
     if ".csv" in file_path:
         files = [file_path]
@@ -286,6 +288,7 @@ def active_information_storage_calculation(file_path, outfile_name, verbose=Fals
 # function to calculate the transfer entropy for all sensor pairs
 def transfer_entropy_calculation(file_path, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0, split_observations=False, split_length=None):
 
+    tqdm.write(f"Calculating transfer entropy for {file_path}")
     # array with all files in file_root with os.path
     if ".csv" in file_path:
         files = [file_path]
