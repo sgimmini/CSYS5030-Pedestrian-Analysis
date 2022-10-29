@@ -185,3 +185,6 @@ rsconnect/
 # ignore mac files
 .DS_Store
 
+.VSCodeCounter
+*.pdf
+*.png
