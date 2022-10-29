@@ -17,27 +17,7 @@ data %>%
   filter(Date > as.Date("2009-12-31")) %>% # set boundary to beginning of 2010
   subset(!(Month == 02 & Mdate == 29)) -> data # remove 29.02.
 
-'%!in%' <- function(x,y)!('%in%'(x,y))
 
-
-# function for rolling average, which makes plot a bit better to look at
-rollmean <- function(x, k) {
-  
-  stopifnot("`x` is missing" = !missing(x))
-  stopifnot("`k` is missing" = !missing(k))
-  stopifnot("`x` must be numeric" = is.numeric(x))
-  stopifnot("`k` must be numeric" = is.numeric(k))
-  
-  out <- rep(NA_real_, length(x))
-  neg_offset <- floor(k / 2)
-  pos_offset <- ceiling(k / 2) - 1
-  if (k <= length(x)){
-    for (i in (1 + neg_offset):(length(x) - pos_offset)) {
-      out[[i]] <- mean(x[(i - neg_offset):(i + pos_offset)])
-    }
-  }
-  out
-}
 
 ##################################################
 # plot each for day
@@ -493,7 +473,7 @@ data %>%
 
 # save data
 data %>% 
-  filter(Year == 2018, Month == 11, Mdate %in% c(12, 13, 14, 15, 16, 17, 18)) %>% 
+  filter(Year == 2018, Month == 11) %>% #, Mdate %in% c(12, 13, 14, 15, 16, 17, 18)) %>% 
   select(Date_Time, Sensor_ID, Hourly_Counts) %>% 
   group_by(Date_Time, Sensor_ID) %>% 
   mutate(row = row_number()) %>% 
@@ -504,7 +484,7 @@ data %>%
   ungroup() %>% 
   select_if(~ !any(is.na(.))) %>% 
   select(-Date_Time) %>% 
-  write_csv(file="pedestrians/datetime_sensor_id_week-in_11-2018.csv")
+  write_csv(file="pedestrians/datetime_sensor_id_11-2018.csv")
   
 # save data for each day
 for (day in c(12, 13, 14, 15, 16, 17, 18)) {
@@ -522,4 +502,265 @@ for (day in c(12, 13, 14, 15, 16, 17, 18)) {
     select(-Date_Time) %>%
     write_csv(file = paste("pedestrians/datetime_sensor_id_",day,"-11-2018.csv", sep=""))
 }
+
+# save whole week 
+data %>%
+  filter(Year == 2018, Month == 11, Mdate %in% c(12, 13, 14, 15, 16, 17, 18)) %>%
+  select(Date_Time, Sensor_ID, Hourly_Counts) %>%
+  group_by(Date_Time, Sensor_ID) %>%
+  mutate(row = row_number()) %>%
+  pivot_wider(names_from = Sensor_ID, values_from = Hourly_Counts) %>%
+  select(-row) %>%
+  select(Date_Time, str_sort(names(.), numeric = TRUE)) %>%
+  arrange(Date_Time) %>%
+  ungroup() %>%
+  select_if(~ !any(is.na(.))) %>%
+  select(-Date_Time) %>%
+  write_csv(file = "pedestrians/datetime_sensor_id_week-11-2018.csv")
+
+# plot whole week
+data %>%
+  filter(Year == 2018, Month == 11, Mdate %in% c(12, 13, 14, 15, 16, 17, 18)) %>%
+  select(Date_Time, Sensor_ID, Hourly_Counts) %>%
+  group_by(Date_Time, Sensor_ID) %>% 
+  ggplot(aes(x = Date_Time, y = Hourly_Counts, color = factor(Sensor_ID))) +
+  geom_line()
+
+
+################################################## 
+# sensor id location with map
+# buhh
+library(maps)
+
+
+locations <- read.csv2("pedestrians/Pedestrian_Counting_System_Sensor_Locations.csv", sep = ",")
+
+data %>% 
+  select(Sensor_ID) %>% 
+  unique() -> sensors_ids
+
+locations %>% 
+  select(sensor_id, latitude, longitude) %>% 
+  filter(sensor_id %in% sensors_ids$Sensor_ID) %>%
+  arrange(sensor_id) %>%
+  # get min and max of both coordinates
+  mutate(min_lat = min(latitude), max_lat = max(latitude), min_long = min(longitude), max_long = max(longitude)) %>% 
+  select(-sensor_id, -latitude, -longitude) %>% 
+  unique()  %>% 
+  # convert strings to numeric
+  mutate(min_lat = as.numeric(min_lat), max_lat = as.numeric(max_lat), min_long = as.numeric(min_long), max_long = as.numeric(max_long)) -> min_max_coords
+
+
+# get a map of Melbourne of the database "world" with maps
+#map("world", xlim = c(min_max_coords$min_long, min_max_coords$max_long), ylim = c(min_max_coords$min_lat, min_max_coords$max_lat), fill = TRUE, col = "grey", mar = c(0, 0, 0, 0))
+map.cities()
+
+
+################################################## 
+# find year where the most sensors are available
+# 2018/2020 - 31
+# 2021 - 29
+# 2019 - 28
+# data already exists 
+# DONE
+
+data %>% 
+  # filter(Year %in% c(2019, 2020, 2021)) %>% 
+  select(Date_Time, Sensor_ID, Hourly_Counts) %>% 
+  group_by(Date_Time, Sensor_ID) %>% 
+  mutate(row = row_number()) %>% 
+  pivot_wider(names_from = Sensor_ID, values_from = Hourly_Counts) %>% 
+  select(-row) %>% 
+  arrange(Date_Time) %>% 
+  select(Date_Time, str_sort(names(.), numeric=TRUE)) %>% 
+  ungroup() %>% 
+  mutate(Year = format(Date_Time, format="%Y")) -> datetime_sensor_data
+
+for (ye in 2010:2021) {
+  datetime_sensor_data %>% 
+    filter(Year == ye) %>% 
+    select_if(~ !any(is.na(.))) %>% 
+    ncol() -> num
+  print(paste(ye, num)) 
+}
+
+
+################################################## 
+# get data for different weekdays of year 2018
+
+data %>% 
+  filter(Year == 2018) %>% 
+  select(Date_Time, Sensor_ID, Hourly_Counts) %>% 
+  group_by(Date_Time, Sensor_ID) %>% 
+  mutate(row = row_number()) %>% 
+  pivot_wider(names_from = Sensor_ID, values_from = Hourly_Counts) %>% 
+  select(-row) %>% 
+  arrange(Date_Time) %>% 
+  select(Date_Time, str_sort(names(.), numeric=TRUE)) %>% 
+  ungroup() %>% 
+  mutate(Weekday = format(Date_Time, format="%A")) %>% 
+  filter(Weekday == "Monday") %>% 
+  # remove Weekday and Date_Time 
+  select(-Weekday, -Date_Time) %>%
+  write_csv(file = "pedestrians/datetime_sensor_id_monday-2018.csv")
+
+
+# put above code in a loop over all weekdays
+for (day in c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")) {
+  data %>% 
+    filter(Year == 2018) %>% 
+    select(Date_Time, Sensor_ID, Hourly_Counts) %>% 
+    group_by(Date_Time, Sensor_ID) %>% 
+    mutate(row = row_number()) %>% 
+    pivot_wider(names_from = Sensor_ID, values_from = Hourly_Counts) %>% 
+    select(-row) %>% 
+    arrange(Date_Time) %>% 
+    select(Date_Time, str_sort(names(.), numeric=TRUE)) %>% 
+    ungroup() %>% 
+    # remove columns where there is any NA
+    select_if(~ !any(is.na(.))) %>%
+    mutate(Weekday = format(Date_Time, format="%A")) %>% 
+    filter(Weekday == day) %>% 
+    # remove Weekday and Date_Time 
+    select(-Weekday, -Date_Time) %>%
+    write_csv(file = paste("pedestrians/datetime_sensor_id_", tolower(day), "-2018.csv", sep=""))
+} 
+
+################################################## 
+# locations filter
+locations %>% 
+  select(sensor_id, sensor_description, location) %>% 
+  arrange(sensor_id) -> sensor_id_name_location
+
+weekday_AIS %>% 
+  select(Sensor) %>% 
+  unique() -> used2018sensors
+
+sensor_id_name_location %>% 
+  select(sensor_id, location) %>% 
+  filter(sensor_id < 59) %>%  # remove all late sensors, because no datapoints < 2022
+  filter(sensor_id != 55) %>% # offline after being online, just started before covid
+  filter(sensor_id != 41) %>% 
+  filter(sensor_id %in% used2018sensors$Sensor) %>% 
+  # remove ( ) from location
+  mutate(location = gsub("[()]", "", location)) %>%
+  # save to csv
+  write_csv(file = "pedestrians/sensor_id_location_2018.csv")
+
+
+################################################## 
+# plot a heatmap with hours on the x axis and the days of the week on the y axis
+
+colfunc<-colorRampPalette(c("white","yellow","red","black"))
+
+data %>% 
+  filter(Year == 2021) %>% 
+  # get the sum of Hourly_Counts for each hour of each day of the week
+  group_by(Day, Time) %>%
+  summarise(Hourly_Counts = sum(Hourly_Counts)) %>%
+  ungroup() %>% 
+  # order weekdays by day of the week
+  mutate(Day = factor(Day, levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))) %>%
+  ggplot(aes(x = Time, y = Day, fill = Hourly_Counts)) +
+  geom_tile() +
+  scale_fill_gradientn(colours = colfunc(100)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  labs(x = "Time", y = "Day", fill = "Hourly Counts") +
+  ggtitle("Pedestrian Counts in 2018") 
+
+  
+# use above code in a for loop over the years 2010 to 2021 and save plots in an array 
+plots <- list()
+for (ye in 2010:2021) {
+  plots[[ye]] <- data %>% 
+    filter(Year == ye) %>% 
+    # get the sum of Hourly_Counts for each hour of each day of the week
+    group_by(Day, Time) %>%
+    summarise(Hourly_Counts = sum(Hourly_Counts)) %>%
+    ungroup() %>% 
+    # order weekdays by day of the week
+    mutate(Day = factor(Day, levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))) %>%
+    ggplot(aes(x = Time, y = Day, fill = Hourly_Counts)) +
+    geom_tile() +
+    scale_fill_gradientn(colours = colfunc(100)) +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+    labs(x = "Time", y = "Day", fill = "Hourly Counts") +
+    ggtitle(paste("Pedestrian Counts in", ye))
+}
+
+# save plots in pdf
+pdf("pedestrians/weekday_time_heatmap.pdf", width = 11, height = 6)
+for (i in 1:length(plots)) {
+  print(plots[[i]])
+}
+dev.off()
+
+
+
+
+
+
+################################################## 
+library(tmap)
+library(sf)
+library(sp)
+
+locations <- read.csv2("pedestrians/Pedestrian_Counting_System_Sensor_Locations.csv", sep = ",")
+
+data %>% 
+  select(Sensor_ID) %>% 
+  unique() -> sensors_ids
+
+locations %>% 
+  select(sensor_id, latitude, longitude) %>% 
+  filter(sensor_id %in% sensors_ids$Sensor_ID) %>%
+  arrange(sensor_id) %>%
+  # get min and max of both coordinates
+  mutate(min_lat = min(latitude), max_lat = max(latitude), min_long = min(longitude), max_long = max(longitude)) %>% 
+  select(-sensor_id, -latitude, -longitude) %>% 
+  unique()  %>% 
+  # convert strings to numeric
+  mutate(min_lat = as.numeric(min_lat), max_lat = as.numeric(max_lat), min_long = as.numeric(min_long), max_long = as.numeric(max_long)) -> 
+  min_max_coords 
+
+
+################################################## 
+# months 
+# maybe not a good idea, because sensors are too fluctuation and I cant find enough
+# years to have more months
+# DISCARD
+
+for (month in c(1:12)) {
+  data %>% 
+    filter(Year %in% c(2019:2021)) %>% 
+    select(Date_Time, Sensor_ID, Hourly_Counts) %>% 
+    group_by(Date_Time, Sensor_ID) %>% 
+    mutate(row = row_number()) %>% 
+    pivot_wider(names_from = Sensor_ID, values_from = Hourly_Counts) %>% 
+    select(-row) %>% 
+    arrange(Date_Time) %>% 
+    select(Date_Time, str_sort(names(.), numeric=TRUE)) %>% 
+    ungroup() %>% 
+    # remove columns where there is any NA
+    select_if(~ !any(is.na(.))) %>%
+    # get month from Date_Time
+    mutate(Month = as.numeric(format(Date_Time, format="%m"))) %>%
+    filter(Month == month) %>% 
+    # remove Weekday and Date_Time 
+    select(-Date_Time, -Month) %>%
+    write_csv(file = paste("pedestrians/datetime_sensor_id_", tolower(month), "-1921.csv", sep=""))
+} 
+
+
+
+################################################## 
+# TODO: dataset with sensors 2 and 9 for local AIS calculation and plotting for 2018
+
+
+
+
+
+
 
