@@ -71,7 +71,7 @@ def set_split_length(month):
     return split_length
 
 # function to calculate the mutual information 
-def mutal_information_calculation(file_path, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0):
+def mutal_information_calculation(file_path, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0, split_observations=False, split_length=None):
 
     tqdm.write("Calculating mutual information")
     # array with all files in file_root with os.path
@@ -117,10 +117,12 @@ def mutal_information_calculation(file_path, outfile_name, verbose=False, stat_s
         calcClass = JPackage("infodynamics.measures.continuous.kraskov").MutualInfoCalculatorMultiVariateKraskov1
         calc = calcClass()
 
+        if not split_observations:
+            calc.setProperty("DYN_CORR_EXCL", str(dyn_corr_excl))
+
         for time_lag in tqdm(range(0, time_lag_max+1), position=1, leave=False, desc="Time lag"):
             # 2. Set any properties to non-default values:
             calc.setProperty("TIME_DIFF", str(time_lag))
-            calc.setProperty("DYN_CORR_EXCL", str(dyn_corr_excl))
 
             # Compute for all pairs:
             for s in tqdm(range(data.shape[1]), position=2, leave=False, desc="Sensor 1"):
@@ -128,11 +130,35 @@ def mutal_information_calculation(file_path, outfile_name, verbose=False, stat_s
                     # For each source-dest pair:
                     if (s == d):
                         continue
-                    source = JArray(JDouble, 1)(data[:, s].tolist())
-                    destination = JArray(JDouble, 1)(data[:, d].tolist())
 
                     # 3. Initialise the calculator for (re-)use:
                     calc.initialise()
+
+                    if split_observations:
+                        if time_lag == 0:
+                            source = JArray(JDouble, 1)(data[:, s].tolist())
+                            destination = JArray(JDouble, 1)(data[:, d].tolist())
+                            calc.setObservations(source, destination)
+                        else:
+                            calc.startAddObservations()
+
+                            if split_length == 31:
+                                split_length = set_split_length(month=month)
+
+                            for i in range(0, data.shape[0], split_length):
+                                source = JArray(JDouble, 1)(data[i:i+split_length, s].tolist())
+                                destination = JArray(JDouble, 1)(data[i:i+split_length, d].tolist())
+                                calc.addObservations(source, destination)
+
+                            # 4. Finalise adding observations:
+                            calc.finaliseAddObservations()
+
+                    else:
+                        source = JArray(JDouble, 1)(data[:, s].tolist())
+                        destination = JArray(JDouble, 1)(data[:, d].tolist())
+                        calc.setObservations(source, destination)
+
+
                     # 4. Supply the sample data:
                     calc.setObservations(source, destination)
                     # 5. Compute the estimate:
@@ -286,7 +312,7 @@ def active_information_storage_calculation(file_path, outfile_name, verbose=Fals
 
 
 # function to calculate the transfer entropy for all sensor pairs
-def transfer_entropy_calculation(file_path, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0, split_observations=False, split_length=None):
+def transfer_entropy_calculation(file_path, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0, split_observations=False, split_length=None, compute_locals=False):
 
     tqdm.write(f"Calculating transfer entropy for {file_path}")
     # array with all files in file_root with os.path
@@ -329,16 +355,18 @@ def transfer_entropy_calculation(file_path, outfile_name, verbose=False, stat_si
         calc.setProperty("k_TAU", "3")
         calc.setProperty("l_HISTORY", "2")
         calc.setProperty("l_TAU", "6")
-        calc.setProperty("DYN_CORR_EXCL", str(dyn_corr_excl))
-        calc.setProperty("AUTO_EMBED_METHOD", "MAX_CORR_AIS")
-        calc.setProperty("AUTO_EMBED_K_SEARCH_MAX", "10")
-        calc.setProperty("AUTO_EMBED_TAU_SEARCH_MAX", "10")
+
+        if not split_observations:
+            calc.setProperty("DYN_CORR_EXCL", str(dyn_corr_excl))
+            calc.setProperty("AUTO_EMBED_METHOD", "MAX_CORR_AIS")
+            calc.setProperty("AUTO_EMBED_K_SEARCH_MAX", "10")
+            calc.setProperty("AUTO_EMBED_TAU_SEARCH_MAX", "10")
 
         for time_lag in tqdm(range(1, time_lag_max+1), position=1, leave=False, desc="Processing time lags"):
             calc.setProperty("DELAY", str(time_lag))
             # Compute for all pairs:
-            for s in tqdm(range(data.shape[1]), position=2, leave=False, desc="Processing sensor 1"):
-                for d in tqdm(range(data.shape[1]), position=3, leave=False, desc="Processing sensor 2"):
+            for d in tqdm(range(data.shape[1]), position=2, leave=False, desc="Processing targets"):
+                for s in tqdm(range(data.shape[1]), position=3, leave=False, desc="Processing sources"):
                     # For each source-dest pair:
                     if (s == d):
                         continue
