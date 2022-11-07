@@ -175,6 +175,49 @@ plot_hourly_sensor_counts <- function(data, sensors, title, year = NULL, month =
 
 
 
+######################################
+# funciton to plot scatter from MI values with correlation line
 
-
+plot_MI_distance_correlation <- function(data, time_lag, title, out_filename = NULL) {
+  
+  stopifnot("`data` is missing" = !missing(data))
+  stopifnot("`time_lag` is missing" = !missing(time_lag))
+  
+  data %>% 
+    mutate_all(type.convert, as.is=TRUE) %>% 
+    mutate_if(is.character, as.numeric) %>% 
+    select(-Stat_Sig) %>% 
+    filter(Time_lag == time_lag) %>% 
+    filter(Sensor1 < Sensor2) %>% 
+    # combine sensor1 and sensor2 into one column sensors
+    mutate(sensors = paste(Sensor1, Sensor2, sep = "_")) %>%
+    select(-c(Sensor1, Sensor2, Time_lag, Year, Month, Day)) %>%
+    # left join with sensor_distances
+    left_join(sensor_distances, by = c("sensors" = "sensors")) %>%
+    # remove rows with NA
+    na.omit() -> 
+    data_distances
+  
+  data_distances %>% 
+    # plot with correlation line
+    ggplot(aes(x = distance, y = MI)) +
+    #ggplot(aes(x = distance, y = MI, size = Stat_Sig)) +
+    geom_point() +
+    geom_smooth(method = "lm", se = FALSE, color = "red") +
+    # add correlation value to plot
+    annotate("text", x = 0.5, y = 0.5, label = paste("r = ", round(cor(data_distances$distance, data_distances$MI), 2))) +
+    labs(x = "Distance in m", y = "MI in nats") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+    theme(axis.text.y = element_text(angle = 0, hjust = 1)) +
+    ggtitle(title) +
+    guides(fill = guide_colorbar(title.position = "top", title.hjust = 0.5, title = "MI"))  ->
+    plot
+  
+  # if out_filename is not NULL, save plot to pdf
+  if (!is.null(out_filename)) {
+    ggsave(out_filename, plot = plot, width = 10, height = 10/(16/9), limitsize = F)
+  } else {
+    print(plot)
+  }
+}
 
