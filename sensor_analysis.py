@@ -109,6 +109,92 @@ def set_split_length(month):
 
     return split_length
 
+# function to search for the best parameters for all columns and save them in a csv
+def search_for_best_parameters(file, outfile_name, measure):
+    tqdm.write("Searching for best parameters for {}".format(file))    
+
+    # pandas df to save the best parameters with column names for different parameters, depending on "measure"
+    # for AIS: k, tau 
+    # for TE: k, ktau, l, ltau
+    if measure == "AIS":
+        best_parameters_df = pd.DataFrame(columns=["column", "k", "ktau"])
+    elif measure == "TE":
+        best_parameters_df = pd.DataFrame(columns=["column", "k", "ktau", "l", "ltau"])
+
+    # read first line of file to get column names
+    with open(file, 'r') as f:
+        column_names = f.readline().split(",")
+        # remove any non digit characters from column names
+        column_names = [re.sub(r'\D', '', i) for i in column_names]
+
+    dataRaw = readFloatsFile.readFloatsFile(file)
+
+    data = np.array(dataRaw)
+    # 1. Construct the calculator:
+    if measure == "AIS":
+        calcClass = JPackage("infodynamics.measures.continuous.kraskov").ActiveInfoStorageCalculatorKraskov
+    elif measure == "TE":
+        calcClass = JPackage("infodynamics.measures.continuous.kraskov").TransferEntropyCalculatorKraskov
+
+    calc = calcClass()
+
+    if measure == "TE":
+        calc.setProperty("ALG_NUM", "2")
+
+    calc.setProperty("DYN_CORR_EXCL", str(29))
+    calc.setProperty("AUTO_EMBED_METHOD", "MAX_CORR_AIS")
+    calc.setProperty("AUTO_EMBED_K_SEARCH_MAX", "10")
+    calc.setProperty("AUTO_EMBED_TAU_SEARCH_MAX", "10")
+
+    for d in tqdm(range(data.shape[1]), position=0, leave=False):
+        for s in tqdm(range(data.shape[1]), position=1, leave=False):
+            # if measure is AIS and s is not 0, skip 
+            if measure == "AIS" and s != 0:
+                continue
+            if d == s:
+                continue
+
+            calc.initialise()
+
+            source = JArray(JDouble, 1)(data[:, s].tolist())
+            destination = JArray(JDouble, 1)(data[:, d].tolist())
+
+            if measure == "AIS":
+                calc.setObservations(destination)
+                # get properties k_HISTORY, and TAU
+                k = int(''.join(map(str, calc.getProperty("k_HISTORY"))))
+                tau = int(''.join(map(str, calc.getProperty("TAU"))))
+                # save k and tau in best_parameters_df with pd concat
+                best_parameters_df = pd.concat([best_parameters_df, pd.DataFrame({"column": [column_names[d]], "k": [k], "ktau": [tau]})], axis=0)
+
+            else:
+                calc.setObservations(source, destination)
+                # get properties k_HISTORY, k_TAU, l_HISTORY, l_TAU
+                k = int(''.join(map(str, calc.getProperty("k_HISTORY"))))
+                ktau = int(''.join(map(str, calc.getProperty("k_TAU"))))
+                l = int(''.join(map(str, calc.getProperty("l_HISTORY"))))
+                ltau = int(''.join(map(str, calc.getProperty("l_TAU"))))
+                # save k, ktau, l, ltau in best_parameters_df with pd concat
+                best_parameters_df = pd.concat([best_parameters_df, pd.DataFrame({"column": [column_names[d]], "k": [k], "ktau": [ktau], "l": [l], "ltau": [ltau]})], axis=0)
+
+
+    print(best_parameters_df)
+    # print min, max and mean of all columns except column
+    print("k: min: {}, max: {}, mean: {}".format(best_parameters_df.k.min(), best_parameters_df.k.max(), best_parameters_df.k.mean()))
+    print("ktau: min: {}, max: {}, mean: {}".format(best_parameters_df.ktau.min(), best_parameters_df.ktau.max(), best_parameters_df.ktau.mean()))
+    try:
+        print("l: min: {}, max: {}, mean: {}".format(best_parameters_df.l.min(), best_parameters_df.l.max(), best_parameters_df.l.mean()))
+        print("ltau: min: {}, max: {}, mean: {}".format(best_parameters_df.ltau.min(), best_parameters_df.ltau.max(), best_parameters_df.ltau.mean()))
+    except:
+        pass
+    # print(best_parameters_df.drop("column", axis=1).describe())
+
+    # save best_parameters_df to csv
+    best_parameters_df.to_csv(outfile_name, index=False)
+
+
+
+
 # function to calculate the mutual information 
 def mutal_information_calculation(file_path, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0, split_observations=False, split_length=None):
 
