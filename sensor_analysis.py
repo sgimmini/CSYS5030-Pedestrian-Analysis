@@ -13,6 +13,45 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 from statsmodels.graphics.tsaplots import plot_acf
 
+# function to read in a file and make it useable for R
+def make_locals_useable(locals_file, output_file):
+
+    # output df where columns will be sensor pairs and rows values
+    output_df = pd.DataFrame()
+    with open(locals_file, 'r') as f:
+        # read in file
+        lines = f.readlines()
+        print(len(lines))
+        for i, l in tqdm(enumerate(lines)):
+            if i == 0:
+                continue
+            else:
+                # split line by , 
+                line = l.split(",")
+                # only look for tl 0 
+                if line[5] != "0":
+                    continue
+                # capture everything between " " and save in variable local_values
+                local_values = re.findall(r'"([^"]*)"', l)[0]
+                # remove ' from local_values
+                local_values = local_values.replace("'", "")
+                # split local_values at , and save in variable local_values
+                local_values = local_values.split(",")
+                # make float
+                local_values = [float(i) for i in local_values]
+                # for each line combine Sensor1 and Sensor2 to Sensors
+                sensor_pair = line[3] + "_" + line[4]
+
+                # create temp df with sensor_pair as column name and local_values as values
+                temp_df = pd.DataFrame({sensor_pair: local_values})
+
+                # concatenate temp_df to output_df
+                output_df = pd.concat([output_df, temp_df], axis=1)
+
+    # save output df to csv
+    output_df.to_csv(output_file, index=False)
+
+
 
 # plot autocorrelation function for one column of a file that is read in as a pandas df
 def plot_acf_for_file(file_path, lags=100):
