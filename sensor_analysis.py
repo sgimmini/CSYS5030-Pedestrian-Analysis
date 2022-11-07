@@ -196,7 +196,7 @@ def search_for_best_parameters(file, outfile_name, measure):
 
 
 # function to calculate the mutual information 
-def mutal_information_calculation(file_path, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0, split_observations=False, split_length=None):
+def mutal_information_calculation(file_path, outfile_name, verbose=False, stat_signif=False, time_lag_max=10, dyn_corr_excl=0, split_observations=False, split_length=None, compute_locals=False):
 
     tqdm.write("Calculating mutual information")
     # array with all files in file_root with os.path
@@ -211,6 +211,9 @@ def mutal_information_calculation(file_path, outfile_name, verbose=False, stat_s
 
     # pandas df with columns Year, Month, Day, Sensor1, Sensor2, Time_lag, MI and Stat_sig
     df = pd.DataFrame(columns=["Year", "Month", "Day", "Sensor1", "Sensor2", "Time_lag", "MI", "Stat_Sig"])
+
+    if compute_locals:
+        df_local = pd.DataFrame(columns=["Year", "Month", "Day", "Sensor1", "Sensor2", "Time_lag", "MI", "Stat_Sig", "Local_MI"])
 
     for file in tqdm(files, position=0, desc="Processing files"):
 
@@ -286,7 +289,12 @@ def mutal_information_calculation(file_path, outfile_name, verbose=False, stat_s
 
                     # 4. Supply the sample data:
                     calc.setObservations(source, destination)
+
                     # 5. Compute the estimate:
+                    if compute_locals:
+                        locals = np.array(calc.computeLocalOfPreviousObservations())
+                        # convert locals to a string with 4 decimal places and each value seperated by a comma
+                        locals = ",".join([f"{local:.4f}" for local in locals])
                     result = calc.computeAverageLocalOfObservations()
 
                     if stat_signif:
@@ -300,6 +308,8 @@ def mutal_information_calculation(file_path, outfile_name, verbose=False, stat_s
 
                     # save results in df with pd.concat
                     df = pd.concat([df, pd.DataFrame([[year, month, day, column_names[s], column_names[d], time_lag, result, p_value]], columns=["Year", "Month", "Day", "Sensor1", "Sensor2", "Time_lag", "MI", "Stat_Sig"])], ignore_index=True)
+                    if compute_locals:
+                        df_local = pd.concat([df_local, pd.DataFrame([[year, month, day, column_names[s], column_names[d], time_lag, result, p_value, locals]], columns=["Year", "Month", "Day", "Sensor1", "Sensor2", "Time_lag", "MI", "Stat_Sig", "Local_MI"])], ignore_index=True)
  
                     # print result for each sensor pair with 4 decimal places, nulldist, std, p_value and time lag using f-string
                     if verbose:
@@ -313,10 +323,19 @@ def mutal_information_calculation(file_path, outfile_name, verbose=False, stat_s
         if stat_signif:
             if outfile_name.endswith("_stat_sig.csv"):
                 df.to_csv(outfile_name, index=False)
+                if compute_locals:
+                    df_local.to_csv(outfile_name_locals, index=False)
             else:
+                if compute_locals:
+                    outfile_name_locals = outfile_name.split(".")[0] + "_locals_stat_sig.csv"
+                    df_local.to_csv(outfile_name_locals, index=False)
                 outfile_name = outfile_name.split(".")[0] + "_stat_sig.csv"
                 df.to_csv(outfile_name, index=False)
+
         else:
+            if compute_locals:
+                outfile_name_locals = outfile_name.split(".")[0] + "_locals.csv"
+                df_local.to_csv(outfile_name_locals, index=False)
             df.to_csv(outfile_name, index=False)
 
 
