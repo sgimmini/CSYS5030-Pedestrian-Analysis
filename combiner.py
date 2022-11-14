@@ -10,11 +10,12 @@ def main():
         # loop over all files
         for file in files:
             # check if the file is a .R or .py file
-            if file.endswith('.R') or file.endswith('.py'):
+            #if file.endswith('.R') or file.endswith('.py'):
+            if file.endswith('.py'):
                 # open the file
                 with open(file, 'r') as f:
                     # write the file name
-                    out.write('\n' + file + '\n')
+                    out.write('\n----' + file + '----\n')
                     # write the file contents
                     out.write(f.read())
 
