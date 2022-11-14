@@ -499,16 +499,16 @@ def transfer_entropy_calculation(file_path, outfile_name, verbose=False, stat_si
         calcClass = JPackage("infodynamics.measures.continuous.kraskov").TransferEntropyCalculatorKraskov
         calc = calcClass()
         # 2. Set any properties to non-default values:
-        calc.setProperty("k_HISTORY", "2")
+        calc.setProperty("k_HISTORY", "3")
         calc.setProperty("k_TAU", "3")
-        calc.setProperty("l_HISTORY", "2")
-        calc.setProperty("l_TAU", "6")
+        calc.setProperty("l_HISTORY", "3")
+        calc.setProperty("l_TAU", "3")
 
         if not split_observations:
             calc.setProperty("DYN_CORR_EXCL", str(dyn_corr_excl))
-            calc.setProperty("AUTO_EMBED_METHOD", "MAX_CORR_AIS")
-            calc.setProperty("AUTO_EMBED_K_SEARCH_MAX", "10")
-            calc.setProperty("AUTO_EMBED_TAU_SEARCH_MAX", "10")
+            # calc.setProperty("AUTO_EMBED_METHOD", "MAX_CORR_AIS")
+            # calc.setProperty("AUTO_EMBED_K_SEARCH_MAX", "10")
+            # calc.setProperty("AUTO_EMBED_TAU_SEARCH_MAX", "10")
 
         for time_lag in tqdm(range(1, time_lag_max+1), position=1, leave=False, desc="Processing time lags"):
             calc.setProperty("DELAY", str(time_lag))
@@ -634,15 +634,15 @@ def main():
     year_file = "data/refactored_years_hourly/datetime_sensor_id_refactor_2018.csv"
     # plot_acf_for_file(year_file, 100) # -> 24 for month and year
     # active_information_storage_calculation(year_file, outfile_name="year_hourly_AIS.csv", verbose=False, stat_signif=True, dyn_corr_excl=29)
-    # mutal_information_calculation(year_file, outfile_name="year_hourly_MI_TL5.csv", verbose=False, stat_signif=False, time_lag_max=5, dyn_corr_excl=29)
-    # transfer_entropy_calculation(year_file, outfile_name="year18_hourly_TE_TL5.csv", verbose=False, stat_signif=False, time_lag_max=5, dyn_corr_excl=29)
+    # mutal_information_calculation(year_file, outfile_name="year2018_sensors1-2_hourly_MI_TL1.csv", verbose=False, stat_signif=False, time_lag_max=1, dyn_corr_excl=29, compute_locals=True)
+    transfer_entropy_calculation(year_file, outfile_name="year18_hourly_TE_TL5.csv", verbose=False, stat_signif=False, time_lag_max=1, dyn_corr_excl=29)
 
     # WEEKDAYS
     weekday_file = "data/weekdays"#/datetime_sensor_id_monday-2018.csv"
     # plot_acf_for_file(weekday_file, 100) # -> 29
     # active_information_storage_calculation(weekday_file, outfile_name="weekday_hourly_AIS.csv", verbose=False, stat_signif=True, dyn_corr_excl=29, split_observations=True, split_length=24)
     # mutal_information_calculation(weekday_file, outfile_name="weekday_hourly_MI_TL5.csv", verbose=False, stat_signif=True, time_lag_max=5, dyn_corr_excl=29, split_observations=True, split_length=24)
-    # TODO: transfer_entropy_calculation(weekday_file, outfile_name="weekday_hourly_TE_TL5.csv", verbose=False, stat_signif=True, time_lag_max=5, dyn_corr_excl=29, split_observations=True, split_length=24)
+    transfer_entropy_calculation(weekday_file, outfile_name="weekday_hourly_TE_TL5.csv", verbose=False, stat_signif=True, time_lag_max=5, dyn_corr_excl=29, split_observations=True, split_length=24)
 
     # MONTHS - this is different from MONTH, as here I have ensured to have the same sensors for all months
     months_file = "data/one_year/"
@@ -652,12 +652,20 @@ def main():
     # transfer_entropy_calculation(months_file, outfile_name="months_hourly_TE_TL5.csv", verbose=False, stat_signif=False, time_lag_max=5, dyn_corr_excl=29)
 
     # YEARS - years 2019 - 2021
-    years_file = "data/three_years/"
+    years_file = "data/three_years/datetime_sensor_id_1921.csv"
     # plot_acf_for_file(osp.join(years_file, os.listdir(years_file)[0]), 100) # -> 29
-    # active_information_storage_calculation(years_file, outfile_name="years1921_hourly_AIS.csv", verbose=False, stat_signif=True, dyn_corr_excl=29, split_observations=True, split_length=31)
-    # mutal_information_calculation(years_file, outfile_name="years1921_hourly_MI_TL5.csv", verbose=False, stat_signif=False, time_lag_max=5, dyn_corr_excl=29)
-    # TODO:transfer_entropy_calculation(years_file, outfile_name="years1921_hourly_TE_TL5.csv", verbose=False, stat_signif=False, time_lag_max=5, dyn_corr_excl=29, split_observations=True, split_length=31)
+    # plot_acf_for_file(years_file, 100) # -> 31
+    # active_information_storage_calculation(years_file, outfile_name="years1921_hourly_AIS.csv", verbose=False, stat_signif=True, dyn_corr_excl=31, split_observations=False)
+    # mutal_information_calculation(years_file, outfile_name="years1921_hourly_MI_TL5.csv", verbose=False, stat_signif=False, time_lag_max=5, dyn_corr_excl=31)
+    # transfer_entropy_calculation(years_file, outfile_name="years1921_hourly_TE_TL5.csv", verbose=False, stat_signif=False, time_lag_max=5, dyn_corr_excl=29, split_observations=False, split_length=31)
 
+    # make locals useable for R
+    # make_locals_useable("year_hourly_MI_TL5_locals.csv", "local_MI_2018_TL0.csv")
+
+    # search for best parameters
+    # search_for_best_parameters("data/one_year/datetime_sensor_id_6-2018.csv", "TE_search_alg2.csv", "TE")
+
+            
 # main
 if __name__ == "__main__":
     main()
