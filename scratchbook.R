@@ -753,6 +753,20 @@ for (month in c(1:12)) {
     write_csv(file = paste("pedestrians/datetime_sensor_id_", tolower(month), "-1921.csv", sep=""))
 } 
 
+data %>% 
+  filter(Year %in% c(2019:2021)) %>% 
+  select(Date_Time, Sensor_ID, Hourly_Counts) %>% 
+  group_by(Date_Time, Sensor_ID) %>% 
+  mutate(row = row_number()) %>% 
+  pivot_wider(names_from = Sensor_ID, values_from = Hourly_Counts) %>% 
+  select(-row) %>% 
+  arrange(Date_Time) %>% 
+  select(Date_Time, str_sort(names(.), numeric=TRUE)) %>% 
+  ungroup() %>% 
+  # remove columns where there is any NA
+  select_if(~ !any(is.na(.))) %>%
+  select(-Date_Time) %>%
+  write_csv(file = "pedestrians/datetime_sensor_id_1921.csv")
 
 
 ################################################## 
@@ -760,7 +774,131 @@ for (month in c(1:12)) {
 
 
 
+################################################## 
+# get distance between sensors and save it
+# DONE
+library(geosphere)
+
+# use sensor_id_name_location to and distm function to calculate the distance between all sensors
+sensor_id_name_location %>% 
+  filter(sensor_id %in% used2018sensors$Sensor) %>% 
+  select(-sensor_description) %>% 
+  # remove ( and ) from location column
+  mutate(location = gsub("[()]", "", location)) %>% 
+  # have to columns sensor1 and sensor2 with all combinations of sensor_id
+  select(sensor1 = sensor_id, sensor2 = sensor_id, location1 = location, location2 = location) %>%
+  expand(sensor1, sensor2) %>%
+  right_join(., sensor_id_name_location %>% 
+               #filter(sensor_id %in% used2018sensors$Sensor) %>% 
+               select(-sensor_description) %>% 
+               # remove ( and ) from location column
+               mutate(location = gsub("[()]", "", location)) %>% 
+               select(sensor2 = sensor_id, location2 = location), by = "sensor2") %>%
+  right_join(., sensor_id_name_location %>% 
+               #filter(sensor_id %in% used2018sensors$Sensor) %>% 
+               select(-sensor_description) %>% 
+               # remove ( and ) from location column
+               mutate(location = gsub("[()]", "", location)) %>% 
+               select(sensor1 = sensor_id, location1 = location), by = "sensor1") %>%
+  # remove rows where sensor1 == sensor2
+  filter(sensor1 != sensor2) %>%
+  # remove rows where sensor1 > sensor2
+  #filter(sensor1 < sensor2) %>%
+  select(sensor1, sensor2, location1, location2) %>%
+  # split location1 and location2 in latitude and longitude
+  separate(location1, c("lat1", "long1"), sep = ", ") %>%
+  separate(location2, c("lat2", "long2"), sep = ", ") %>%
+  # convert strings to numeric
+  mutate(lat1 = as.numeric(lat1), long1 = as.numeric(long1), lat2 = as.numeric(lat2), long2 = as.numeric(long2)) %>% 
+  rowwise() %>% 
+  # calculate distance between sensors
+  mutate(distance = distm(c(long1, lat1), c(long2, lat2), fun = distHaversine)) %>%
+  # remove columns lat1, long1, lat2, long2
+  select(-lat1, -long1, -lat2, -long2) %>%
+  # rename distance[,1] to distance
+  rename(distance = distance) %>% 
+  # combinde sensor1 and sensor2 into sensors, in 1_2 format 
+  mutate(sensors = paste(sensor1, sensor2, sep = "_")) %>%
+  # remove sensor1 and sensor2
+  select(-sensor1, -sensor2) %>%
+  select(sensors, distance) %>% 
+  # create histogram
+  ggplot(aes(x = distance)) +
+  geom_histogram(bins = 100) +
+  labs(x = "Distance between sensors", y = "Count") +
+  # title 
+  ggtitle("Histogram of distance between sensors") -> plot
+
+# save plot
+ggsave("pedestrians/histogram_distance_between_sensors.png", plot = plot, width = 10, height = 5, dpi = 300)
+
+  
+  
+  
+  view()#-> sensor_distances
 
 
+################################################## 
+# pick sensors directly and find a year where they all perform
+# can't really find years where there are more than 4 sensors of the ones I am
+# interested in. Unfortunately cannot go further from here
 
+data %>% 
+  filter(Sensor_ID %in% c(9, 23, 5, 6, 22, 15)) %>%
+  filter(Year == 2019) %>% 
+  # plot Hourly_Counts for each sensor
+  ggplot(aes(x = Date_Time, y = Hourly_Counts, color = factor(Sensor_ID))) +
+  geom_line() +
+  facet_wrap(~Sensor_ID, scales = "free") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "Date_Time", y = "Hourly_Counts", title = "Hourly_Counts for each sensor") +
+  scale_x_datetime(date_breaks = "1 month", date_labels = "%b %Y") +
+  scale_y_continuous(breaks = seq(0, 100, 10)) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  theme(legend.position = "none") + 
+  # use our_colors
+  scale_color_manual(values = our_colors) 
 
+data %>% 
+  filter(Sensor_ID %in% c(3, 9, 23, 24, 5, 6, 22, 15)) %>%
+  filter(Year == 2010) %>%
+  select(Date_Time, Sensor_ID, Hourly_Counts) %>% 
+  group_by(Date_Time, Sensor_ID) %>% 
+  mutate(row = row_number()) %>% 
+  pivot_wider(names_from = Sensor_ID, values_from = Hourly_Counts) %>% 
+  select(-row) %>% 
+  arrange(Date_Time) %>% 
+  select(Date_Time, str_sort(names(.), numeric=TRUE)) %>%  
+  ungroup() %>% 
+  select_if(~ !any(is.na(.)))# %>% 
+  select(-Date_Time, -Year) 
+
+################################################## 
+data %>% 
+    filter(Year == 2018) %>% 
+    filter(Sensor_ID == 15) %>% 
+    group_by(Month) %>% 
+    summarise(total = sum(Hourly_Counts)) %>% 
+    ggplot(aes(x = Month, y = total)) +
+    geom_point()
+  
+  %>% 
+    write.csv2(file = "pedestrians/totalcounts_2018.csv", row.names = FALSE)
+    
+################################################## 
+# save data for sensors 1 and 2 for 2018 
+  
+data %>% 
+  filter(Year == 2018) %>% 
+  filter(Sensor_ID %in% c(1,2)) %>% 
+    select(Sensor_ID, Date_Time, Hourly_Counts) %>% 
+  pivot_wider(names_from = Sensor_ID, values_from = Hourly_Counts) %>% 
+  select_if(~ !any(is.na(.))) %>% 
+    arrange(Date_Time) %>% 
+    select(-Date_Time) %>% 
+  write_csv(file = "pedestrians/sensors1_2_2018.csv")
+    
+  
+  
+  
